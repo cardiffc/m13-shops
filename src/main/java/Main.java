@@ -1,9 +1,13 @@
-import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
+import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.result.UpdateResult;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.json.simple.JSONObject;
 
 import java.util.Scanner;
 
@@ -59,7 +63,7 @@ public class Main {
                 if (newAction.length != 3) {
                     getErrorMessage();
                 } else {
-                    merchGood(newAction, shopsCollection);
+                    merchGood(newAction, shopsCollection, goodsCollection);
                 }
             }
 
@@ -93,26 +97,29 @@ public class Main {
     }
 
     private static void addGood(String[] action, MongoCollection<Document> goods) {
+
         Document newGood = new Document()
                 .append("name", action[1])
                 .append("price", Integer.parseInt(action[2]));
         goods.insertOne(newGood);
     }
 
-    private static void merchGood(String[] action, MongoCollection<Document> shops) {
+    private static void merchGood(String[] action, MongoCollection<Document> shops, MongoCollection<Document> goods) {
 
-//        Bson filter = new Document("name", "Harish Taware");
-//        Bson newValue = new Document("salary", 90000);
-//        Bson updateOperationDocument = new Document("$set", newValue);
-//        collection.updateOne(filter, updateOperationDocument);
-
-        Bson filter = new Document("name", action[1]);
-        Bson newValue = new Document("good", action[2]);
-        Bson updater = new Document("$set", newValue);
-
-        shops.updateOne(filter, updater);
-
-
+        FindIterable<Document> goodExist = goods.find(new Document("name", action[2]));
+        if (goodExist.first() != null) {
+            JSONObject filter = new JSONObject();
+            filter.put("name", action[1]);
+            JSONObject updater = new JSONObject();
+            updater.put("good", action[2]);
+            BsonDocument queryFilter = BsonDocument.parse(filter.toString());
+            BsonDocument queryRes = BsonDocument.parse("{$push: " + updater.toString() + "}");
+            System.out.println((shops.updateOne(queryFilter, queryRes).getMatchedCount() > 0) ?
+                    "Товар успешно выставлен!"
+                    : "Нет такого магазина!");
+        } else {
+            System.out.println("Нет такого товара!");
+        }
     }
 
     private static void getStatistics() {
