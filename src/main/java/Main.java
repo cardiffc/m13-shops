@@ -1,6 +1,10 @@
+import ch.qos.logback.classic.Logger;
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 import java.util.Scanner;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import org.slf4j.LoggerFactory;
 
 public class Main {
     private static String databaseName = "local";
@@ -10,6 +14,10 @@ public class Main {
     private static String goods = "goods";
 
     public static void main(String[] args) {
+        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        Logger rootLogger = loggerContext.getLogger("org.mongodb.driver");
+        rootLogger.setLevel(Level.OFF);
+
         MongoCollection<Document> shopsCollection = Operations.getCollection(shops, host, port, databaseName);
         MongoCollection<Document> goodsCollection = Operations.getCollection(goods, host, port, databaseName);
         while (true) {
@@ -60,7 +68,7 @@ public class Main {
                 if (newAction.length != 1) {
                     Operations.getErrorMessage();
                 } else {
-                    Operations.getStatistics();
+                    Operations.getStatistics(shopsCollection);
                 }
             }
         }
