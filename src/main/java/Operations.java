@@ -3,22 +3,12 @@ import com.mongodb.MongoClient;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-//import com.mongodb.client.model.Aggregates;
 import static com.mongodb.client.model.Aggregates.*;
-import com.mongodb.client.model.Projections;
-import org.bson.BsonDocument;
-import org.bson.BsonString;
 import org.bson.Document;
-import org.bson.conversions.Bson;
-import org.bson.io.BsonOutput;
-import org.json.simple.JSONObject;
 import static com.mongodb.client.model.Accumulators.*;
-
-
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+import java.util.concurrent.atomic.AtomicInteger;
 import static com.mongodb.client.model.Filters.*;
 
 public class Operations {
@@ -69,36 +59,36 @@ public class Operations {
         MongoClient mongoClient = new MongoClient(host, port);
         MongoDatabase database = mongoClient.getDatabase(databaseName);
         MongoCollection<Document> newCollection = database.getCollection(collection);
-       // newCollection.drop();
+        newCollection.drop();
         return newCollection;
     }
 
-    protected static void getStatistics (MongoCollection<Document> shops) {
-   //   { $lookup: { from:"goods", localField:"good", foreignField:"name", as:"list" } }, {$unwind: {path:"$list"}}, {$group: { _id: {name:"$name"}, avgprice: {$avg: "$list.price"} } }])
+    protected static void getStatistics (MongoCollection<Document> shops, MongoCollection<Document> goods) {
 
         AggregateIterable<Document> newDoc = shops.aggregate(Arrays.asList(lookup("goods","good","name","list"), unwind("$list"),
-                group("$name", avg("avgprice", "$list.price"))));
+                group("$name", avg("avgprice", "$list.price"), min("minprice","$list.price"),
+                        max("maxprice","$list.price"))));
 
         newDoc.forEach((Block<? super Document>) doc -> {
-            System.out.println("Магазин : " + doc.get("_id") + " средняя цена : " + doc.get("avgprice"));
-
+            System.out.println("************************************************************************");
+            System.out.println("Магазин : " + doc.get("_id") + "\nСредняя цена : " + doc.get("avgprice"));
+            Integer minPrice = Integer.parseInt(doc.get("minprice").toString());
+            Integer macPrice = Integer.parseInt(doc.get("maxprice").toString());
+            Document minimal = goods.find(eq("price", minPrice)).first();
+            Document maximal = goods.find(eq("price", macPrice)).first();
+            System.out.println("Самый дешевый товар: " + minimal.get("name") +
+                    "\nСамый дорогой товар: " + maximal.get("name"));
+            List<String> goodCurShop = (List<String>) shops.find(eq("name", doc.get("_id"))).first().get("good");
+            System.out.println("Количество товаров: " + goodCurShop.size());
+            AtomicInteger ltHundred = new AtomicInteger();
+            goodCurShop.forEach(g -> {
+                String price = goods.find(eq("name",g)).first().get("price").toString();
+                if (Integer.parseInt(price) < 100) {
+                    ltHundred.getAndIncrement();
+                }
+            });
+            System.out.println("Количество товаров дешевле 100р: " + ltHundred);
         });
-
-        AggregateIterable<Document> countDoc = shops.aggregate(Arrays.asList(lookup("goods","good","name","list")));
-        countDoc.forEach((Block<? super Document>) doc -> {
-            System.out.println(doc.get("list"));
-
-        });
-
-
-       // 1b2c163098be(mongod-4.2.0) local> db.shops.aggregate([{ $lookup: { from:"goods", localField:"good", foreignField:"name", as:"list" } }])
-
-
-        //System.out.println(newDoc.toString());
-
-
     }
-
-
 }
 

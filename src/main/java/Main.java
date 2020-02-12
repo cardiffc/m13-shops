@@ -20,6 +20,8 @@ public class Main {
 
         MongoCollection<Document> shopsCollection = Operations.getCollection(shops, host, port, databaseName);
         MongoCollection<Document> goodsCollection = Operations.getCollection(goods, host, port, databaseName);
+        LoadTestData.loadData(shopsCollection,goodsCollection);
+
         while (true) {
             Scanner scanner = new Scanner(System.in);
             System.out.println("Введите команду (help для получения списка команд): ");
@@ -68,7 +70,7 @@ public class Main {
                 if (newAction.length != 1) {
                     Operations.getErrorMessage();
                 } else {
-                    Operations.getStatistics(shopsCollection);
+                    Operations.getStatistics(shopsCollection,goodsCollection);
                 }
             }
         }
